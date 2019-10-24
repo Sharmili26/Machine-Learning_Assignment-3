@@ -1,0 +1,124 @@
+---
+title: "5-Naive Bayes"
+output:
+  word_document: default
+  html_notebook:
+    highlight: textmate
+    theme: cerulean
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+dir.create("images")
+```
+
+***
+
+# Naive Bayes
+
+This code illustrates the Naive Bayes Model.
+
+We will use the e1070 package.
+```{r}
+MyData <-read.csv("FlightDelays.csv")
+library(caret)
+library(ISLR)
+library(pROC)
+library(psych)
+library(gmodels)
+# install.packages("e1071") #install first
+library(e1071)  
+library(naivebayes)
+library(dplyr)
+summary(MyData)
+
+MyData$CRS_DEP_TIME <-as.factor(MyData$CRS_DEP_TIME)
+MyData$DAY_WEEK <-as.factor(MyData$DAY_WEEK)
+MyData$Flight.Status <-factor(MyData$Flight.Status, levels = c("delayed", "ontime"), labels = c(1,0))
+str(MyData)
+View(MyData)
+
+#select 5 variables plus fligh status
+v<-MyData[, c(1,2,4,8,10,13)]
+str(v)
+```
+
+Clean the data, and divide into training and test
+```{r}
+#Question 1
+set.seed(123)
+#Divide data into test and train
+Index_Train<-createDataPartition(v$Flight.Status, p=0.6, list=FALSE)
+Train <-MyData[Index_Train,]
+Train
+validate <-MyData[-Index_Train,]
+validate
+
+```
+
+Now, run the Naive Bayes model, and predict Default status on the test set
+```{r}
+#Question 2 
+#Naive Bayes Model
+
+nb_model <-naiveBayes(Train$Flight.Status~.,data = Train)
+nb_model
+Predicted_validate_labels <-predict(nb_model,validate, type = "raw")
+Predicted_validate_labels
+
+predicate <-predict(nb_model, validate)
+predicate
+
+```
+
+```{r}
+# Question 3
+#counts table and a proportion table of flights were delayed and on-time
+
+Table <- MyData %>% 
+    group_by( DEST ) %>% 
+    summarise( count = n(), proportion = n()/length(MyData$DEST) )
+
+Table
+
+```
+
+```{r}
+#Question 4
+#confusion matrix and ROC for the validation data
+
+roc(validate$Flight.Status, Predicted_validate_labels[,2])
+
+plot.roc(validate$Flight.Status,Predicted_validate_labels[,2])
+
+CrossTable(x=validate$Flight.Status,y=predicate, prop.chisq = FALSE)
+
+#Accuracy: 719/880 = 0.792
+#Recall: 709/709 = 1
+#Precision = 709/(709+161) = 0.814
+#Specificity = 10/171 = 0.05
+
+
+```
+
+```{r}
+#confusion matrix and ROC for the train data
+
+Predicted_train_labels <-predict(nb_model,Train, type = "raw")
+Predicted_train <-predict(nb_model,Train)
+
+```
+```{r}
+roc(Train$Flight.Status, Predicted_train_labels[,2])
+
+plot.roc(Train$Flight.Status,Predicted_train_labels[,2])
+
+CrossTable(x=Train$Flight.Status,y=Predicted_train, prop.chisq = FALSE)
+```
+
+
+
+
+
